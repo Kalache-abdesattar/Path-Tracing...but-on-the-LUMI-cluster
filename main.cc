@@ -8,10 +8,23 @@
 #include "helper.hh"
 
 
+#define CACHELINE_SIZE (64) //bytes
+
+
+// stored in a single cacheline 
+struct color_struct{
+    float3 color;
+    char padding[CACHELINE_SIZE - sizeof(float3)]; 
+} typedef color_struct;
+
+
 // Renders the given scene into an image using path tracing.
 void baseline_render(const scene& s, uchar4* image)
 {
-    float3 colors[IMAGE_WIDTH * IMAGE_HEIGHT];
+    // Remove False Sharing 
+    color_struct *colors = (color_struct*)(aligned_alloc(CACHELINE_SIZE, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(color_struct)));
+    
+    //float3 colors[IMAGE_WIDTH * IMAGE_HEIGHT];
     
     #pragma omp parallel for
     for(uint i = 0; i < IMAGE_WIDTH * IMAGE_HEIGHT; ++i)
@@ -19,11 +32,11 @@ void baseline_render(const scene& s, uchar4* image)
         uint x = i % IMAGE_WIDTH;
         uint y = i / IMAGE_WIDTH; 
 
-        colors[i] = {0, 0, 0};
+        colors[i].color = {0, 0, 0};
     
         for(uint j = 0; j < SAMPLES_PER_PIXEL; ++j)
         {
-            colors[i] += path_trace_pixel(
+            colors[i].color += path_trace_pixel(
                 uint2{x, y},
                 j,
                 s.subframes.data(),
@@ -38,11 +51,11 @@ void baseline_render(const scene& s, uchar4* image)
             );
         }
 
-        
-            colors[i] /= SAMPLES_PER_PIXEL;
-            image[i] = tonemap_pixel(colors[i]);
-        
+        colors[i].color /= SAMPLES_PER_PIXEL;
+        image[i] = tonemap_pixel(colors[i].color);
     }
+
+    free((void*)colors);
 }
 
 #include <iostream>
@@ -94,6 +107,7 @@ int main()
         while(index_str.size() < 4) index_str.insert(index_str.begin(), '0');
 
         // Write output image
+        std::cout << "writing file..." << "\n";
         write_bmp(
             ("output/frame_"+index_str+".bmp").c_str(),
             IMAGE_WIDTH, IMAGE_HEIGHT, 4, IMAGE_WIDTH * 4,
