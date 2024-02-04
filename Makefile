@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-std=c++17 -g -O3 -fopenmp -ffast-math -march=native
+CFLAGS=-std=c++17 -g -O3 -ffast-math -march=native
 #CFLAGS=-std=c++17 -g
 LDFLAGS=-lm
 SRCS=main.cc bvh.cc mesh.cc bmp.cc scene.cc
@@ -10,7 +10,7 @@ HEADERS=bvh.hh mesh.hh math.hh scene.hh ray_query.hh config.hh bmp.hh path_trace
 all: $(SRCS) pt
 
 pt: $(OBJS)
-	$(CC) -fopenmp $(OBJS) -o $@ $(LDFLAGS)
+	$(CC)  $(OBJS) -o $@ $(LDFLAGS)
 
 %.o: %.cc $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@

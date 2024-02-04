@@ -696,7 +696,6 @@ void setup_animation_frame(scene& s, uint frame_index)
     }
 
     std::vector<bvh_buffers> local_bufs(subframe_count);
-#pragma omp parallel for
     for(uint i = 0; i < subframe_count; ++i)
     {
         std::vector<std::pair<const tlas_instance*, uint>> instances = pull_instance_list(

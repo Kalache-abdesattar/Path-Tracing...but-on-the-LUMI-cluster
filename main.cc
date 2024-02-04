@@ -4,7 +4,6 @@
 #include <clocale>
 #include <memory>
 
-#include <omp.h>
 #include "helper.hh"
 
 
@@ -13,7 +12,6 @@ void baseline_render(const scene& s, uchar4* image)
 {
     float3 colors[IMAGE_WIDTH * IMAGE_HEIGHT];
     
-    #pragma omp parallel for
     for(uint i = 0; i < IMAGE_WIDTH * IMAGE_HEIGHT; ++i)
     {
         uint x = i % IMAGE_WIDTH;

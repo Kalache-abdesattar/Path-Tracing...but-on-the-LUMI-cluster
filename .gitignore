@@ -2,3 +2,4 @@
 bmp.o bvh.o main.o mesh.o scene.o
 pt
 *.bmp
+
