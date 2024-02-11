@@ -162,6 +162,7 @@ const char *clErrorString(int e)
    }
 }
 
+
 cl_ulong
 getStartEndTime(cl_event event) {
     int status;
@@ -182,3 +183,44 @@ getStartEndTime(cl_event event) {
 
     return end - start;
 }
+
+
+
+float ocl_profile(cl_event* events, int num_events, char** event_type){
+    cl_ulong totalTime = 0;
+    // Profiling accounting data struct data holders
+    struct profiling_info profiling_info_struct = {0, 0};
+
+    for(int i=0; i<num_events; i++){
+        clGetEventProfilingInfo(events[i], CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &(profiling_info_struct.start), NULL);
+        clGetEventProfilingInfo(events[i], CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &(profiling_info_struct.end), NULL);
+        cl_ulong diff = profiling_info_struct.end - profiling_info_struct.start;
+        totalTime += diff;
+        printf("%s time is : %.4fms \n", event_type[i], (double)diff / 1000);
+    }
+    printf("-------TOTAL TIME OF CANNY EDGE DETECTION IS : %.4fms---------\n\n", (double)totalTime / 1000);
+    return (double)totalTime / 1000;
+}
+
+
+void chk(cl_int status, const char* cmd) {
+   if(status != CL_SUCCESS)
+        printf("ERROR %s : %s\n", cmd, clErrorString(status));
+}
+
+
+void print_programBuild_logs(cl_program program, cl_device_id device){
+    size_t program_size, log_size;
+    char *program_buffer, *program_log;
+
+    clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG,
+                 0, NULL, &log_size);
+    program_log = (char*) malloc(log_size + 1);
+    program_log[log_size] = '\0';
+
+    clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG,
+                 log_size + 1, program_log, NULL);
+
+    printf("THE PROGRAM LOGS ----------------------------%s\n", program_log);
+}
+

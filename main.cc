@@ -11,14 +11,14 @@
 void baseline_render(const scene& s, uchar4* image)
 {
     float3 colors[IMAGE_WIDTH * IMAGE_HEIGHT];
-    
+        
     for(uint i = 0; i < IMAGE_WIDTH * IMAGE_HEIGHT; ++i)
     {
         uint x = i % IMAGE_WIDTH;
         uint y = i / IMAGE_WIDTH; 
 
         colors[i] = {0, 0, 0};
-    
+
         for(uint j = 0; j < SAMPLES_PER_PIXEL; ++j)
         {
             colors[i] += path_trace_pixel(
@@ -37,21 +37,13 @@ void baseline_render(const scene& s, uchar4* image)
         }
 
         
-            colors[i] /= SAMPLES_PER_PIXEL;
-            image[i] = tonemap_pixel(colors[i]);
+        colors[i] /= SAMPLES_PER_PIXEL;
+        image[i] = tonemap_pixel(colors[i]);
         
     }
 }
 
-#include <iostream>
-#include <chrono>
 
-
-std::ostream& operator<<(std::ostream& out, std::chrono::nanoseconds diff)
-{
-    out << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count(); 
-    return out;
-}
 
 
 
