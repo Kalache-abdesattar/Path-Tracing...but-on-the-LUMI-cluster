@@ -28,7 +28,7 @@ static cl_uint numDevices = 0;
 static cl_program program;
 static cl_kernel main_kernel; 
 
-static cl_mem subframe_buf;
+static cl_mem subframes_buf;
 static cl_mem instances_buf;
 static cl_mem bvh_nodes_buf;
 static cl_mem bvh_links_buf;
@@ -97,7 +97,7 @@ destroy() {
     // Free OpenCL resources
     clReleaseKernel(main_kernel);
     clReleaseCommandQueue(cmdQueue);
-    clReleaseMemObject(subframe_buf);
+    clReleaseMemObject(subframes_buf);
     clReleaseMemObject(instances_buf);
     clReleaseMemObject(bvh_nodes_buf);
     clReleaseMemObject(bvh_links_buf);
@@ -156,7 +156,6 @@ void baseline_render(const scene& s, uchar4* image)
 
 
 
-
 int main(){
     init();
 
@@ -166,7 +165,11 @@ int main(){
 
     scene s = load_scene();
 
-    printf("maybe that is why it's failing : size of s.subframes = %d \n\n", s.instances.size());
+    int frame_index = 0;
+
+    setup_animation_frame(s, frame_index);
+
+
 
     
     // subframe* subframe_buf = (subframe*)(malloc(s.subframes.size()));
@@ -182,48 +185,39 @@ int main(){
     int status = 0;
 
 
-    if(s.subframes.size())
-        subframe_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.subframes.size(),
+    subframes_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.subframes.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    if(s.instances.size())
-        instances_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.instances.size(),
+    instances_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.instances.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    if(s.bvh_buf.nodes.size())
-        bvh_nodes_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.nodes.size(),
+    bvh_nodes_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.nodes.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    if(s.bvh_buf.links.size())
-        bvh_links_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.links.size(),
+    bvh_links_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.links.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    if(s.mesh_buf.indices.size())
-        mesh_indices_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.indices.size(),
+    mesh_indices_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.indices.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    if(s.mesh_buf.pos.size())
-        mesh_pos_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.pos.size(),
+    mesh_pos_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.pos.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    if(s.mesh_buf.normal.size())
-        mesh_normal_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.normal.size(),
+    mesh_normal_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.normal.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    if(s.mesh_buf.albedo.size())
-        mesh_albedo_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.albedo.size(),
+    mesh_albedo_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.albedo.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    if(s.mesh_buf.material.size())
-        mesh_material_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.material.size(),
+    mesh_material_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.material.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
@@ -259,16 +253,43 @@ int main(){
 
 
     // Write input array A to the device buffer bufferA
-    cl_event write_event;
-    status = clEnqueueWriteBuffer(cmdQueue, instances_buf, CL_TRUE,
-       0, s.instances.size(), s.instances.data(), 0, NULL, &write_event);
+    cl_event write_event_00, write_event_1, write_event_2, write_event_3, 
+        write_event_4, write_event_5, write_event_6, write_event_7, write_event_8, write_event_9, write_event_10;
+    
+    status = clEnqueueWriteBuffer(cmdQueue, subframes_buf, CL_TRUE,
+       0, s.subframes.size(), s.subframes.data(), 0, NULL, &write_event_1);
+    
+    status |= clEnqueueWriteBuffer(cmdQueue, instances_buf, CL_TRUE,
+       0, s.instances.size(), s.instances.data(), 0, NULL, &write_event_2);
+    
+    status |= clEnqueueWriteBuffer(cmdQueue, bvh_nodes_buf, CL_TRUE,
+       0, s.bvh_buf.nodes.size(), s.bvh_buf.nodes.data(), 0, NULL, &write_event_3);
+    
+    status |= clEnqueueWriteBuffer(cmdQueue, bvh_links_buf, CL_TRUE,
+       0, s.bvh_buf.links.size(), s.bvh_buf.links.data(), 0, NULL, &write_event_4);
+    
+    status |= clEnqueueWriteBuffer(cmdQueue, mesh_indices_buf, CL_TRUE,
+       0, s.mesh_buf.indices.size(), s.mesh_buf.indices.data(), 0, NULL, &write_event_5);
+
+    status |= clEnqueueWriteBuffer(cmdQueue, mesh_pos_buf, CL_TRUE,
+       0, s.mesh_buf.pos.size(), s.mesh_buf.pos.data(), 0, NULL, &write_event_6);
+    
+    status |= clEnqueueWriteBuffer(cmdQueue, mesh_normal_buf, CL_TRUE,
+       0, s.mesh_buf.normal.size(), s.mesh_buf.normal.data(), 0, NULL, &write_event_7);
+
+    status |= clEnqueueWriteBuffer(cmdQueue, mesh_albedo_buf, CL_TRUE,
+       0, s.mesh_buf.albedo.size(), s.mesh_buf.albedo.data(), 0, NULL, &write_event_8);
+
+    status |= clEnqueueWriteBuffer(cmdQueue, mesh_material_buf, CL_TRUE,
+       0, s.mesh_buf.material.size(), s.mesh_buf.material.data(), 0, NULL, &write_event_9);
+
     chk(status, "clEnqueueWriteBuffer");
     
-    printf("Write Event to memory buf successful \n\n"); 
+    printf("Write Events to memory buf successful \n\n"); 
     
 
     // Associate the input and output buffers with the kernel
-    status = clSetKernelArg(main_kernel, 0, sizeof(cl_mem), &instances_buf);
+    status  = clSetKernelArg(main_kernel, 0, sizeof(cl_mem), &subframes_buf);
     status |= clSetKernelArg(main_kernel, 1, sizeof(cl_mem), &instances_buf);
     status |= clSetKernelArg(main_kernel, 2, sizeof(cl_mem), &bvh_nodes_buf);
     status |= clSetKernelArg(main_kernel, 3, sizeof(cl_mem), &bvh_links_buf);
@@ -277,14 +298,26 @@ int main(){
     status |= clSetKernelArg(main_kernel, 6, sizeof(cl_mem), &mesh_normal_buf);
     status |= clSetKernelArg(main_kernel, 7, sizeof(cl_mem), &mesh_albedo_buf);
     status |= clSetKernelArg(main_kernel, 8, sizeof(cl_mem), &mesh_material_buf);
-    status |= clSetKernelArg(main_kernel, 9, sizeof(cl_mem), &mesh_material_buf);
+    status |= clSetKernelArg(main_kernel, 9, sizeof(cl_mem), &image_buf);
     chk(status, "clSetKernelArg");
 
     printf("Kernel Arguments set successfully \n\n"); 
     
 
+    // Define an index space (global work size) of work
+    // items for execution. A workgroup size (local work size)
+    // is not required, but can be used.
+    size_t globalWorkSize_sobel[1];
+    globalWorkSize_sobel[0] = IMAGE_WIDTH;
+    globalWorkSize_sobel[1] = IMAGE_HEIGHT;
 
-    
+
+
+    // cl_event read_event1;
+
+    // status = clEnqueueReadBuffer(cmdQueue, image_buf, CL_TRUE, 0,
+    //     IMAGE_HEIGHT*IMAGE_HEIGHT*sizeof(uchar4), image, 0, NULL, &read_event1);
+    // chk(status, "clEnqueueReadBuffer");
     // std::unique_ptr<uchar4[]> image(new uchar4[IMAGE_WIDTH * IMAGE_HEIGHT]);
 
     // uint frame_count = 1;//get_animation_frame_count(s);
