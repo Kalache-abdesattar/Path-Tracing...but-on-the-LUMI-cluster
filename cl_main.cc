@@ -22,13 +22,22 @@
 
 static cl_context context;
 static cl_command_queue cmdQueue;
-static cl_mem buf_imagein, buf_sobelx, buf_sobely, buf_phase, buf_magnitude, buf_output;
 static cl_platform_id *platforms;
 static cl_device_id *devices;
 static cl_uint numDevices = 0;
 static cl_program program;
 static cl_kernel main_kernel; 
 
+static cl_mem subframe_buf;
+static cl_mem instances_buf;
+static cl_mem bvh_nodes_buf;
+static cl_mem bvh_links_buf;
+static cl_mem mesh_indices_buf;
+static cl_mem mesh_pos_buf;
+static cl_mem mesh_normal_buf;
+static cl_mem mesh_albedo_buf;
+static cl_mem mesh_material_buf;
+static cl_mem image_buf;
 
 
 void init() {
@@ -80,86 +89,25 @@ void init() {
            &status);
        chk(status, "clCreateCommandQueue");
 
-
-    //    // Input image buffer
-    //    // HOST -----> Sobel3x3 Kernel
-    //    buf_imagein = clCreateBuffer(context, CL_MEM_READ_ONLY, image_size*sizeof(u_char),
-    //       NULL, &status);
-    //    chk(status, "clCreateBuffer");
-
-
-    //    // ******Sobel3x3 Kernel Buffers********* \\
-    //    //
-    //    // Sobel3x3 -----> phaseAndMagnitude
-    //    buf_sobelx = clCreateBuffer(context, CL_MEM_READ_WRITE, image_size*sizeof(short),
-    //        NULL, &status);
-    //    chk(status, "clCreateBuffer");
-
-    //    buf_sobely = clCreateBuffer(context, CL_MEM_READ_WRITE, image_size*sizeof(short),
-    //        NULL, &status);
-    //    chk(status, "clCreateBuffer");
-
-
-
-    //    // ******phaseAndMagnitude Kernel Buffers********* \\
-    //    // phaseAndMagnitude -----> nonMaxSuppression
-    //    buf_phase = clCreateBuffer(context, CL_MEM_READ_WRITE, image_size*sizeof(u_char),
-    //        NULL, &status);
-    //    chk(status, "clCreateBuffer");
-
-
-    //    buf_magnitude = clCreateBuffer(context, CL_MEM_READ_WRITE, image_size*sizeof(short),
-    //        NULL, &status);
-    //    chk(status, "clCreateBuffer");
-
-
-    //    // ******nonMaxSuppression Kernel Buffers********* \\
-    //    //
-    //    // nonMaxSuppression -----> HOST
-    //    buf_output = clCreateBuffer(context, CL_MEM_READ_WRITE, image_size*sizeof(u_char),
-    //        NULL, &status);
-    //    chk(status, "clCreateBuffer");
-
-
-    //    const char* source = readSource("canny.cl");
-    //    // Create a program with source code
-    //    program = clCreateProgramWithSource(context, 1, &source, NULL, &status);
-    //    chk(status, "clCreateProgramWithSource");
-
-
-    //   // Build (compile) the program for the device
-    //   status = clBuildProgram(program, numDevices, devices,
-    //       NULL, NULL, NULL);
-    //   chk(status, "clBuildProgram");
-
-    //   print_programBuild_logs(program, devices[0]);
-
-    //   // Create the three kernels
-    //   kernel_sobel = clCreateKernel(program, "sobel3x3", &status);
-    //   chk(status, "clCreateKernel");
-
-    //   kernel_phaseAndMagnitude = clCreateKernel(program, "phaseAndMagnitude", &status);
-    //   chk(status, "clCreateKernel");
-
-    //   kernel_nonMaxSuppression = clCreateKernel(program, "nonMaxSuppression", &status);
-    //   chk(status, "clCreateKernel");
-
 }
 
 
 void
 destroy() {
     // Free OpenCL resources
-    // clReleaseKernel(kernel_sobel);
-    // clReleaseKernel(kernel_nonMaxSuppression);
-    // clReleaseKernel(kernel_phaseAndMagnitude);
+    clReleaseKernel(main_kernel);
     clReleaseCommandQueue(cmdQueue);
-    clReleaseMemObject(buf_imagein);
-    clReleaseMemObject(buf_output);
-    clReleaseMemObject(buf_magnitude);
-    clReleaseMemObject(buf_phase);
-    clReleaseMemObject(buf_sobelx);
-    clReleaseMemObject(buf_sobely);
+    clReleaseMemObject(subframe_buf);
+    clReleaseMemObject(instances_buf);
+    clReleaseMemObject(bvh_nodes_buf);
+    clReleaseMemObject(bvh_links_buf);
+    clReleaseMemObject(mesh_indices_buf);
+    clReleaseMemObject(mesh_pos_buf);
+    clReleaseMemObject(mesh_normal_buf);
+    clReleaseMemObject(mesh_albedo_buf);
+    clReleaseMemObject(mesh_material_buf);
+    clReleaseMemObject(image_buf);
+
     clReleaseContext(context);
     clReleaseProgram(program);
 
@@ -234,46 +182,54 @@ int main(){
     int status = 0;
 
 
-
-    // cl_mem subframe_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, (size_t)s.subframes.size(),
-    //       NULL, &status);
-    // chk(status, "clCreateBuffer");
-
-    cl_mem instances_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.instances.size(),
+    if(s.subframes.size())
+        subframe_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.subframes.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    // cl_mem bvh_nodes_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.nodes.size(),
-    //       NULL, &status);
-    // chk(status, "clCreateBuffer");
+    if(s.instances.size())
+        instances_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.instances.size(),
+          NULL, &status);
+    chk(status, "clCreateBuffer");
 
-    // cl_mem bvh_links_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.links.size(),
-    //       NULL, &status);
-    // chk(status, "clCreateBuffer");
+    if(s.bvh_buf.nodes.size())
+        bvh_nodes_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.nodes.size(),
+          NULL, &status);
+    chk(status, "clCreateBuffer");
 
-    // cl_mem mesh_indices_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.indices.size(),
-    //       NULL, &status);
-    // chk(status, "clCreateBuffer");
+    if(s.bvh_buf.links.size())
+        bvh_links_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.links.size(),
+          NULL, &status);
+    chk(status, "clCreateBuffer");
 
-    // cl_mem mesh_pos_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.pos.size(),
-    //       NULL, &status);
-    // chk(status, "clCreateBuffer");
+    if(s.mesh_buf.indices.size())
+        mesh_indices_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.indices.size(),
+          NULL, &status);
+    chk(status, "clCreateBuffer");
 
-    // cl_mem mesh_normal_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.normal.size(),
-    //       NULL, &status);
-    // chk(status, "clCreateBuffer");
+    if(s.mesh_buf.pos.size())
+        mesh_pos_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.pos.size(),
+          NULL, &status);
+    chk(status, "clCreateBuffer");
 
-    // cl_mem mesh_albedo_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.albedo.size(),
-    //       NULL, &status);
-    // chk(status, "clCreateBuffer");
+    if(s.mesh_buf.normal.size())
+        mesh_normal_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.normal.size(),
+          NULL, &status);
+    chk(status, "clCreateBuffer");
 
-    // cl_mem mesh_material_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.material.size(),
-    //       NULL, &status);
-    // chk(status, "clCreateBuffer");
+    if(s.mesh_buf.albedo.size())
+        mesh_albedo_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.albedo.size(),
+          NULL, &status);
+    chk(status, "clCreateBuffer");
 
-    // cl_mem image_buf = clCreateBuffer(context, CL_MEM_WRITE_ONLY, IMAGE_HEIGHT*IMAGE_WIDTH*sizeof(uchar4),
-    //       NULL, &status);
-    // chk(status, "clCreateBuffer");
+    if(s.mesh_buf.material.size())
+        mesh_material_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.material.size(),
+          NULL, &status);
+    chk(status, "clCreateBuffer");
+
+    image_buf = clCreateBuffer(context, CL_MEM_WRITE_ONLY, IMAGE_HEIGHT*IMAGE_WIDTH*sizeof(uchar4),
+          NULL, &status);
+    chk(status, "clCreateBuffer");
 
 
     const char* source = read_source("kernels.cl");
