@@ -42,52 +42,52 @@ static cl_mem image_buf;
 
 void init() {
 
-       cl_int status;
+    cl_int status;
 
-       // Retrieve the number of platforms
-       cl_uint numPlatforms = 0;
-       status = clGetPlatformIDs(0, NULL, &numPlatforms);
-       chk(status, "clGetPlatformIDs");
+    // Retrieve the number of platforms
+    cl_uint numPlatforms = 0;
+    status = clGetPlatformIDs(0, NULL, &numPlatforms);
+    chk(status, "clGetPlatformIDs");
 
-       printf("THE NUMBER OF PLATFORMS IS : %d\n", numPlatforms);
+    printf("THE NUMBER OF PLATFORMS IS : %d\n", numPlatforms);
 
-       // Allocate enough space for each platform
-       platforms = (cl_platform_id*)malloc(
-           numPlatforms*sizeof(cl_platform_id));
+    // Allocate enough space for each platform
+    platforms = (cl_platform_id*)malloc(
+        numPlatforms*sizeof(cl_platform_id));
 
-       // Fill in the platforms
-       status = clGetPlatformIDs(numPlatforms, platforms, NULL);
-       chk(status, "clGetPlatformIDs");
+    // Fill in the platforms
+    status = clGetPlatformIDs(numPlatforms, platforms, NULL);
+    chk(status, "clGetPlatformIDs");
 
-       // Retrieve the number of devices
-       status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0,
-           NULL, &numDevices);
-       chk(status, "clGetDeviceIDs");
-
-
-       printf("THE NUMBER OF DEVICES IS : %d\n", numPlatforms);
+    // Retrieve the number of devices
+    status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0,
+        NULL, &numDevices);
+    chk(status, "clGetDeviceIDs");
 
 
-
-       // Allocate enough space for each device
-       devices = (cl_device_id*)malloc(
-           numDevices*sizeof(cl_device_id));
-        
-       // Fill in the devices
-       status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL,
-           numDevices, devices, NULL);
-       chk(status, "clGetDeviceIDs");
+    printf("THE NUMBER OF DEVICES IS : %d\n", numPlatforms);
 
 
-       // Create a context and associate it with the devices
-       context = clCreateContext(NULL, numDevices, devices, NULL,
-           NULL, &status);
-       chk(status, "clCreateContext");
 
-       // Create a command queue and associate it with the device
-       cmdQueue = clCreateCommandQueue(context, devices[0], CL_QUEUE_PROFILING_ENABLE,
-           &status);
-       chk(status, "clCreateCommandQueue");
+    // Allocate enough space for each device
+    devices = (cl_device_id*)malloc(
+        numDevices*sizeof(cl_device_id));
+    
+    // Fill in the devices
+    status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL,
+        numDevices, devices, NULL);
+    chk(status, "clGetDeviceIDs");
+
+
+    // Create a context and associate it with the devices
+    context = clCreateContext(NULL, numDevices, devices, NULL,
+        NULL, &status);
+    chk(status, "clCreateContext");
+
+    // Create a command queue and associate it with the device
+    cmdQueue = clCreateCommandQueue(context, devices[0], CL_QUEUE_PROFILING_ENABLE,
+        &status);
+    chk(status, "clCreateCommandQueue");
 
 }
 
@@ -118,44 +118,6 @@ destroy() {
 
 
 
-// Renders the given scene into an image using path tracing.
-void baseline_render(const scene& s, uchar4* image)
-{
-    float3 colors[IMAGE_WIDTH * IMAGE_HEIGHT];
-        
-    for(uint i = 0; i < IMAGE_WIDTH * IMAGE_HEIGHT; ++i)
-    {
-        uint x = i % IMAGE_WIDTH;
-        uint y = i / IMAGE_WIDTH; 
-
-        colors[i] = {0, 0, 0};
-
-        for(uint j = 0; j < SAMPLES_PER_PIXEL; ++j)
-        {
-            colors[i] += path_trace_pixel(
-                uint2{x, y},
-                j,
-                s.subframes.data(),
-                s.instances.data(),
-                s.bvh_buf.nodes.data(),
-                s.bvh_buf.links.data(),
-                s.mesh_buf.indices.data(),
-                s.mesh_buf.pos.data(),
-                s.mesh_buf.normal.data(),
-                s.mesh_buf.albedo.data(),
-                s.mesh_buf.material.data()
-            );
-        }
-
-        
-        colors[i] /= SAMPLES_PER_PIXEL;
-        image[i] = tonemap_pixel(colors[i]);
-        
-    }
-}
-
-
-
 int main(){
     init();
 
@@ -163,6 +125,11 @@ int main(){
     setlocale(LC_ALL, "C");
         // Make sure all text parsing is unaffected by locale
 
+    uchar4 *image = (uchar4 *)malloc(IMAGE_HEIGHT*IMAGE_WIDTH*sizeof(uchar4));
+
+    if(!image)
+        exit(1);
+ 
     scene s = load_scene();
 
     int frame_index = 0;
@@ -185,43 +152,43 @@ int main(){
     int status = 0;
 
 
-    subframes_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.subframes.size(),
+    subframes_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, s.subframes.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    instances_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.instances.size(),
+    instances_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, s.instances.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    bvh_nodes_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.nodes.size(),
+    bvh_nodes_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, s.bvh_buf.nodes.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    bvh_links_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.bvh_buf.links.size(),
+    bvh_links_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, s.bvh_buf.links.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    mesh_indices_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.indices.size(),
+    mesh_indices_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, s.mesh_buf.indices.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    mesh_pos_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.pos.size(),
+    mesh_pos_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, s.mesh_buf.pos.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    mesh_normal_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.normal.size(),
+    mesh_normal_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, s.mesh_buf.normal.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    mesh_albedo_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.albedo.size(),
+    mesh_albedo_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, s.mesh_buf.albedo.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    mesh_material_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, s.mesh_buf.material.size(),
+    mesh_material_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, s.mesh_buf.material.size(),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
-    image_buf = clCreateBuffer(context, CL_MEM_WRITE_ONLY, IMAGE_HEIGHT*IMAGE_WIDTH*sizeof(uchar4),
+    image_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, IMAGE_HEIGHT*IMAGE_WIDTH*sizeof(uchar4),
           NULL, &status);
     chk(status, "clCreateBuffer");
 
@@ -259,33 +226,45 @@ int main(){
     status = clEnqueueWriteBuffer(cmdQueue, subframes_buf, CL_TRUE,
        0, s.subframes.size(), s.subframes.data(), 0, NULL, &write_event_1);
     
+    clFinish(cmdQueue);
+
     status |= clEnqueueWriteBuffer(cmdQueue, instances_buf, CL_TRUE,
        0, s.instances.size(), s.instances.data(), 0, NULL, &write_event_2);
     
+    clFinish(cmdQueue);
+
     status |= clEnqueueWriteBuffer(cmdQueue, bvh_nodes_buf, CL_TRUE,
        0, s.bvh_buf.nodes.size(), s.bvh_buf.nodes.data(), 0, NULL, &write_event_3);
-    
+
+    clFinish(cmdQueue);
+
     status |= clEnqueueWriteBuffer(cmdQueue, bvh_links_buf, CL_TRUE,
        0, s.bvh_buf.links.size(), s.bvh_buf.links.data(), 0, NULL, &write_event_4);
+    clFinish(cmdQueue);
     
     status |= clEnqueueWriteBuffer(cmdQueue, mesh_indices_buf, CL_TRUE,
        0, s.mesh_buf.indices.size(), s.mesh_buf.indices.data(), 0, NULL, &write_event_5);
+    clFinish(cmdQueue);
 
     status |= clEnqueueWriteBuffer(cmdQueue, mesh_pos_buf, CL_TRUE,
        0, s.mesh_buf.pos.size(), s.mesh_buf.pos.data(), 0, NULL, &write_event_6);
+    clFinish(cmdQueue);
     
     status |= clEnqueueWriteBuffer(cmdQueue, mesh_normal_buf, CL_TRUE,
        0, s.mesh_buf.normal.size(), s.mesh_buf.normal.data(), 0, NULL, &write_event_7);
+    clFinish(cmdQueue);
 
     status |= clEnqueueWriteBuffer(cmdQueue, mesh_albedo_buf, CL_TRUE,
        0, s.mesh_buf.albedo.size(), s.mesh_buf.albedo.data(), 0, NULL, &write_event_8);
+    clFinish(cmdQueue);
 
     status |= clEnqueueWriteBuffer(cmdQueue, mesh_material_buf, CL_TRUE,
        0, s.mesh_buf.material.size(), s.mesh_buf.material.data(), 0, NULL, &write_event_9);
+    clFinish(cmdQueue);
 
     chk(status, "clEnqueueWriteBuffer");
     
-    printf("Write Events to memory buf successful \n\n"); 
+    printf("Write Events to device memory buf successful \n\n"); 
     
 
     // Associate the input and output buffers with the kernel
@@ -302,6 +281,7 @@ int main(){
     chk(status, "clSetKernelArg");
 
     printf("Kernel Arguments set successfully \n\n"); 
+    clFinish(cmdQueue);
     
 
     // Define an index space (global work size) of work
@@ -317,17 +297,33 @@ int main(){
     status = clEnqueueNDRangeKernel(cmdQueue, main_kernel, 2, NULL,
                                         globalWorkSize, NULL, 0, NULL, &exec_event1);
     chk(status, "clEnqueueNDRangeKernel");
+    clFinish(cmdQueue);
 
 
     printf("Kernel Executed successfully \n\n"); 
 
 
-    // std::unique_ptr<uchar4[]> image(new uchar4[IMAGE_WIDTH * IMAGE_HEIGHT]);
+    //std::unique_ptr<uchar4[]> image(new uchar4[IMAGE_WIDTH * IMAGE_HEIGHT]);
+    
+    // Read the device output buffer to the host output array
+    cl_event read_event1;
 
-    // // Create string for the index number of the frame with leading zeroes.
-    // std::string index_str = std::to_string(frame_index);
-    // while(index_str.size() < 4) index_str.insert(index_str.begin(), '0');
+    // Blocking read
+    status = clEnqueueReadBuffer(cmdQueue, image_buf, CL_TRUE, 0,
+        IMAGE_HEIGHT*IMAGE_WIDTH*sizeof(uchar4), image, 0, NULL, &read_event1);
 
+    clFinish(cmdQueue);
+
+    chk(status, "clEnqueueReadBuffer");
+
+    // Create string for the index number of the frame with leading zeroes.
+    std::string index_str = std::to_string(frame_index);
+    while(index_str.size() < 4) index_str.insert(index_str.begin(), '0');
+
+
+
+    destroy();
+    free(image);
     // cl_event read_event1;
 
     // status = clEnqueueReadBuffer(cmdQueue, image_buf, CL_TRUE, 0,
