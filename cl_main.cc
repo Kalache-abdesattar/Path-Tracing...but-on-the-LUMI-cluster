@@ -231,6 +231,8 @@ int main(){
           NULL, &status);
     chk(status, "clCreateBuffer");
 
+    printf("Opencl Memory Objects created successfully \n\n");
+
 
     const char* source = read_source("kernels.cl");
     // Create a program with source code
@@ -253,8 +255,35 @@ int main(){
     main_kernel = clCreateKernel(program, "baseline_render", &status);
     chk(status, "clCreateKernel");
 
-    printf("Kernel Object created successfully \n\n");
+    printf("Kernel Object created successfully \n\n"); 
+
+
+    // Write input array A to the device buffer bufferA
+    cl_event write_event;
+    status = clEnqueueWriteBuffer(cmdQueue, instances_buf, CL_TRUE,
+       0, s.instances.size(), s.instances.data(), 0, NULL, &write_event);
+    chk(status, "clEnqueueWriteBuffer");
     
+    printf("Write Event to memory buf successful \n\n"); 
+    
+
+    // Associate the input and output buffers with the kernel
+    status = clSetKernelArg(main_kernel, 0, sizeof(cl_mem), &instances_buf);
+    status |= clSetKernelArg(main_kernel, 1, sizeof(cl_mem), &instances_buf);
+    status |= clSetKernelArg(main_kernel, 2, sizeof(cl_mem), &bvh_nodes_buf);
+    status |= clSetKernelArg(main_kernel, 3, sizeof(cl_mem), &bvh_links_buf);
+    status |= clSetKernelArg(main_kernel, 4, sizeof(cl_mem), &mesh_indices_buf);
+    status |= clSetKernelArg(main_kernel, 5, sizeof(cl_mem), &mesh_pos_buf);
+    status |= clSetKernelArg(main_kernel, 6, sizeof(cl_mem), &mesh_normal_buf);
+    status |= clSetKernelArg(main_kernel, 7, sizeof(cl_mem), &mesh_albedo_buf);
+    status |= clSetKernelArg(main_kernel, 8, sizeof(cl_mem), &mesh_material_buf);
+    status |= clSetKernelArg(main_kernel, 9, sizeof(cl_mem), &mesh_material_buf);
+    chk(status, "clSetKernelArg");
+
+    printf("Kernel Arguments set successfully \n\n"); 
+    
+
+
     
     // std::unique_ptr<uchar4[]> image(new uchar4[IMAGE_WIDTH * IMAGE_HEIGHT]);
 
