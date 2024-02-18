@@ -27,6 +27,7 @@ static cl_platform_id *platforms;
 static cl_device_id *devices;
 static cl_uint numDevices = 0;
 static cl_program program;
+static cl_kernel main_kernel; 
 
 
 
@@ -291,6 +292,12 @@ int main(){
 
     printf("Program created successfully \n\n");
 
+
+
+    main_kernel = clCreateKernel(program, "baseline_render", &status);
+    chk(status, "clCreateKernel");
+
+    printf("Kernel Object created successfully \n\n");
     
     
     // std::unique_ptr<uchar4[]> image(new uchar4[IMAGE_WIDTH * IMAGE_HEIGHT]);
