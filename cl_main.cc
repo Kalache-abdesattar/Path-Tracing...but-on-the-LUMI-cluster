@@ -307,11 +307,26 @@ int main(){
     // Define an index space (global work size) of work
     // items for execution. A workgroup size (local work size)
     // is not required, but can be used.
-    size_t globalWorkSize_sobel[1];
-    globalWorkSize_sobel[0] = IMAGE_WIDTH;
-    globalWorkSize_sobel[1] = IMAGE_HEIGHT;
+    size_t globalWorkSize[1];
+    globalWorkSize[0] = IMAGE_WIDTH;
+    globalWorkSize[1] = IMAGE_HEIGHT;
 
 
+    // Enqueue the main_kernel for execution
+    cl_event exec_event1;
+    status = clEnqueueNDRangeKernel(cmdQueue, main_kernel, 2, NULL,
+                                        globalWorkSize, NULL, 0, NULL, &exec_event1);
+    chk(status, "clEnqueueNDRangeKernel");
+
+
+    printf("Kernel Executed successfully \n\n"); 
+
+
+    // std::unique_ptr<uchar4[]> image(new uchar4[IMAGE_WIDTH * IMAGE_HEIGHT]);
+
+    // // Create string for the index number of the frame with leading zeroes.
+    // std::string index_str = std::to_string(frame_index);
+    // while(index_str.size() < 4) index_str.insert(index_str.begin(), '0');
 
     // cl_event read_event1;
 
