@@ -287,14 +287,15 @@ int main(){
     // Define an index space (global work size) of work
     // items for execution. A workgroup size (local work size)
     // is not required, but can be used.
-    size_t globalWorkSize[1];
+    size_t globalWorkSize[3];
     globalWorkSize[0] = IMAGE_WIDTH;
     globalWorkSize[1] = IMAGE_HEIGHT;
+    globalWorkSize[2] = 256;
 
 
     // Enqueue the main_kernel for execution
     cl_event exec_event1;
-    status = clEnqueueNDRangeKernel(cmdQueue, main_kernel, 2, NULL,
+    status = clEnqueueNDRangeKernel(cmdQueue, main_kernel, 3, NULL,
                                         globalWorkSize, NULL, 0, NULL, &exec_event1);
     chk(status, "clEnqueueNDRangeKernel");
     clFinish(cmdQueue);
